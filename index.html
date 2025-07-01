@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS and Inventory Management</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1, h2 { color: #333; }
+        .section { margin-bottom: 30px; padding: 15px; border: 1px solid #eee; border-radius: 8px; background-color: #f9f9f9; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="number"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        pre {
+            background-color: #eee;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <h1>POS and Inventory Management System</h1>
+
+    <div class="section">
+        <h2>Add Product</h2>
+        <label for="addProductId">Product ID:</label>
+        <input type="text" id="addProductId">
+        <label for="addProductName">Name:</label>
+        <input type="text" id="addProductName">
+        <label for="addProductPrice">Price:</label>
+        <input type="number" id="addProductPrice" step="0.01">
+        <label for="addProductQuantity">Quantity:</label>
+        <input type="number" id="addProductQuantity">
+        <button onclick="addProduct()">Add Product</button>
+        <div id="addProductMessage" class="message"></div>
+    </div>
+
+    <div class="section">
+        <h2>Update Product Quantity</h2>
+        <label for="updateProductId">Product ID:</label>
+        <input type="text" id="updateProductId">
+        <label for="updateProductQuantity">Quantity to Add/Remove:</label>
+        <input type="number" id="updateProductQuantity">
+        <button onclick="updateProduct()">Update Product</button>
+        <div id="updateProductMessage" class="message"></div>
+    </div>
+
+    <div class="section">
+        <h2>View Inventory</h2>
+        <button onclick="viewInventory()">View Inventory</button>
+        <pre id="inventoryOutput"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Add to Sale</h2>
+        <label for="saleProductId">Product ID:</label>
+        <input type="text" id="saleProductId">
+        <label for="saleProductQuantity">Quantity:</label>
+        <input type="number" id="saleProductQuantity" value="1">
+        <button onclick="addToSale()">Add to Sale</button>
+        <div id="addToSaleMessage" class="message"></div>
+    </div>
+
+    <div class="section">
+        <h2>Current Sale Total</h2>
+        <button onclick="calculateTotal()">Calculate Total</button>
+        <pre id="totalOutput"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Process Payment</h2>
+        <label for="paymentAmount">Payment Amount:</label>
+        <input type="number" id="paymentAmount" step="0.01">
+        <button onclick="processPayment()">Process Payment</button>
+        <div id="processPaymentMessage" class="message"></div>
+    </div>
+
+    <div class="section">
+        <h2>View Sales History</h2>
+        <button onclick="viewSalesHistory()">View Sales History</button>
+        <pre id="salesHistoryOutput"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Delete Product</h2>
+        <label for="deleteProductId">Product ID:</label>
+        <input type="text" id="deleteProductId">
+        <button onclick="deleteProduct()">Delete Product</button>
+        <div id="deleteProductMessage" class="message"></div>
+    </div>
+
+    <div class="section">
+        <h2>Clear Current Sale</h2>
+        <button onclick="clearSale()">Clear Sale</button>
+        <div id="clearSaleMessage" class="message"></div>
+    </div>
+
+    <div class="section">
+        <h2>Daily Sales Report</h2>
+        <button onclick="salesReportDaily()">Generate Daily Sales Report</button>
+        <pre id="dailySalesReportOutput"></pre>
+    </div>
+
+    <div class="section">
+        <h2>Inventory Report</h2>
+        <button onclick="inventoryReport()">Generate Inventory Report</button>
+        <pre id="inventoryReportOutput"></pre>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:5000'; // Adjust if your Flask app runs on a different port/host
+
+        async function fetchData(url, method = 'GET', data = null) {
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            };
+            if (data) {
+                options.body = JSON.stringify(data);
+            }
+            try {
+                const response = await fetch(url, options);
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Something went wrong');
+                }
+                return result;
+            } catch (error) {
+                console.error('Error:', error);
+                throw error;
+            }
+        }
+
+        function displayMessage(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = isError ? 'message error' : 'message';
+            element.style.display = 'block';
+            setTimeout(() => {
+                element.style.display = 'none';
+            }, 3000);
+        }
+
+        async function addProduct() {
+            const id = document.getElementById('addProductId').value;
+            const name = document.getElementById('addProductName').value;
+            const price = parseFloat(document.getElementById('addProductPrice').value);
+            const quantity = parseInt(document.getElementById('addProductQuantity').value);
+
+            try {
+                const result = await fetchData(`${API_BASE_URL}/add_product`, 'POST', { id, name, price, quantity });
+                displayMessage('addProductMessage', result.message);
+            } catch (error) {
+                displayMessage('addProductMessage', error.message, true);
+            }
+        }
+
+        async function updateProduct() {
+            const id = document.getElementById('updateProductId').value;
+            const quantity = parseInt(document.getElementById('updateProductQuantity').value);
+
+            try {
+                const result = await fetchData(`${API_BASE_URL}/update_product`, 'PUT', { id, quantity });
+                displayMessage('updateProductMessage', result.message);
+            } catch (error) {
+                displayMessage('updateProductMessage', error.message, true);
+            }
+        }
+
+        async function viewInventory() {
+            try {
+                const result = await fetchData(`${API_BASE_URL}/view_inventory`);
+                document.getElementById('inventoryOutput').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('inventoryOutput').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function addToSale() {
+            const id = document.getElementById('saleProductId').value;
+            const quantity = parseInt(document.getElementById('saleProductQuantity').value);
+
+            try {
+                const result = await fetchData(`${API_BASE_URL}/add_to_sale`, 'POST', { id, quantity });
+                displayMessage('addToSaleMessage', result.message);
+            } catch (error) {
+                displayMessage('addToSaleMessage', error.message, true);
+            }
+        }
+
+        async function calculateTotal() {
+            try {
+                const result = await fetchData(`${API_BASE_URL}/calculate_total`);
+                document.getElementById('totalOutput').textContent = `Total: $${result.total.toFixed(2)}`;
+            } catch (error) {
+                document.getElementById('totalOutput').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function processPayment() {
+            const amount = parseFloat(document.getElementById('paymentAmount').value);
+
+            try {
+                const result = await fetchData(`${API_BASE_URL}/process_payment`, 'POST', { amount });
+                displayMessage('processPaymentMessage', result.message + (result.change !== undefined ? ` Change: $${result.change.toFixed(2)}` : ''));
+            } catch (error) {
+                displayMessage('processPaymentMessage', error.message, true);
+            }
+        }
+
+        async function viewSalesHistory() {
+            try {
+                const result = await fetchData(`${API_BASE_URL}/view_sales_history`);
+                document.getElementById('salesHistoryOutput').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('salesHistoryOutput').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function deleteProduct() {
+            const id = document.getElementById('deleteProductId').value;
+            try {
+                const result = await fetchData(`${API_BASE_URL}/delete_product/${id}`, 'DELETE');
+                displayMessage('deleteProductMessage', result.message);
+                viewInventory(); // Refresh inventory after deletion
+            } catch (error) {
+                displayMessage('deleteProductMessage', error.message, true);
+            }
+        }
+
+        async function clearSale() {
+            try {
+                const result = await fetchData(`${API_BASE_URL}/clear_sale`, 'POST');
+                displayMessage('clearSaleMessage', result.message);
+                calculateTotal(); // Reset total after clearing sale
+            } catch (error) {
+                displayMessage('clearSaleMessage', error.message, true);
+            }
+        }
+
+        async function salesReportDaily() {
+            try {
+                const result = await fetchData(`${API_BASE_URL}/sales_report_daily`);
+                document.getElementById('dailySalesReportOutput').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('dailySalesReportOutput').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        async function inventoryReport() {
+            try {
+                const result = await fetchData(`${API_BASE_URL}/inventory_report`);
+                document.getElementById('inventoryReportOutput').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById('inventoryReportOutput').textContent = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
