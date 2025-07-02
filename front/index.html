@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS and Inventory Management</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>POS and Inventory Management System</h1>
+    </header>
+
+    <main class="container">
+        <section id="product-management" class="management-section">
+            <h2>Product Management</h2>
+            <div class="form-section">
+                <h3>Add New Product</h3>
+                <div class="input-group">
+                    <input type="text" id="barcode-add" placeholder="Scan barcode...">
+                    <input type="text" id="product-name" placeholder="Product Name">
+                    <input type="number" id="product-price" placeholder="Price">
+                    <input type="number" id="product-quantity" placeholder="Quantity">
+                    <button id="add-product-btn" class="btn">Add Product</button>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Update Product Quantity</h3>
+                <div class="input-group">
+                    <input type="text" id="barcode-update" placeholder="Scan barcode...">
+                    <input type="number" id="update-quantity" placeholder="New Quantity">
+                    <button id="update-quantity-btn" class="btn">Update Quantity</button>
+                </div>
+            </div>
+
+            <div class="view-section">
+                <h3>Inventory</h3>
+                <button id="view-inventory-btn" class="btn">View Inventory</button>
+                <div id="inventory-list" class="data-display"></div>
+            </div>
+        </section>
+
+        <section id="sale-management" class="management-section">
+            <h2>Sale Management</h2>
+            <div class="form-section">
+                <h3>New Sale</h3>
+                <div class="input-group">
+                    <input type="text" id="barcode-sale" placeholder="Scan barcode to add to sale...">
+                </div>
+                <div id="current-sale" class="sale-display">
+                    <h4>Current Sale</h4>
+                    <ul id="sale-items"></ul>
+                    <p>Total: <span id="sale-total">0.00</span></p>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <h3>Process Payment</h3>
+                <div class="input-group">
+                    <input type="number" id="amount-paid" placeholder="Amount Paid">
+                    <button id="process-payment-btn" class="btn">Process Payment</button>
+                </div>
+                <div id="payment-result" class="data-display"></div>
+            </div>
+
+            <div class="view-section">
+                <h3>Sales History</h3>
+                <button id="view-history-btn" class="btn">View Sales History</button>
+                <div id="sales-history-list" class="data-display"></div>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
