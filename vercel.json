@@ -11,12 +11,16 @@
   ],
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "pos.py"
+      "src": "/",
+      "dest": "front/index.html"
     },
     {
       "src": "/(.*)",
       "dest": "front/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "pos.py"
     }
   ]
 }
