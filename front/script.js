@@ -4,7 +4,7 @@ $(document).ready(function() {
     // Helper function to display messages
     function showMessage(message, type = 'success') {
         const msgDiv = $('<div>').text(message).addClass('message').addClass(type);
-        $('body').append(msgDiv);
+        $('#message-area').append(msgDiv);
         msgDiv.fadeIn(300).delay(3000).fadeOut(300, function() {
             $(this).remove();
         });
@@ -178,15 +178,26 @@ $(document).ready(function() {
     }
 
     function removeFromSale(id) {
-        // This is a frontend-only removal as the backend API does not support removing items from a sale directly.
-        // If you need backend synchronization for removals, the API would need to be extended.
         if (currentSaleItems[id]) {
-            const removedProduct = currentSaleItems[id];
-            delete currentSaleItems[id];
-            showMessage(`Removed ${removedProduct.name} from current sale (frontend only).`);
-            updateCurrentSaleDisplay();
-            // Optionally, you might want to update inventory on the backend if this removal implies returning stock.
-            // This would require a new backend API endpoint (e.g., PUT /update_product with negative quantity).
+            const productToRemove = currentSaleItems[id];
+            const quantityToReturn = productToRemove.quantity; // Return all quantity of this item
+
+            // Update backend inventory by "adding back" the quantity
+            $.ajax({
+                url: `${API_BASE_URL}/update_product`,
+                type: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify({ id: productToRemove.id, quantity: quantityToReturn }), // Use positive quantity to add back to inventory
+                success: function(response) {
+                    showMessage(response.message || `Returned ${productToRemove.name} (x${quantityToReturn}) to inventory.`);
+                    delete currentSaleItems[id]; // Remove from local sale items
+                    updateCurrentSaleDisplay();
+                    loadInventory(); // Refresh inventory display
+                },
+                error: function(xhr) {
+                    showMessage('Error removing from sale and updating inventory: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'), 'error');
+                }
+            });
         }
     }
 
@@ -199,7 +210,9 @@ $(document).ready(function() {
             const item = currentSaleItems[id];
             frontendTotal += item.price * item.quantity;
             const listItem = $('<li>').html(`
-                ${item.name} (x${item.quantity}) - $${(item.price * item.quantity).toFixed(2)}
+                ${item.name} - ${item.price.toFixed(2)} x 
+                <input type="number" class="sale-item-quantity" data-id="${item.id}" value="${item.quantity}" min="1">
+                = ${(item.price * item.quantity).toFixed(2)}
                 <button class="btn remove-item-btn" data-id="${item.id}">Remove</button>
             `);
             saleItemsList.append(listItem);
@@ -219,9 +232,55 @@ $(document).ready(function() {
         });
 
         // Add event listener for remove buttons
-        $('.remove-item-btn').off('click').on('click', function() {
+        $('#sale-items').on('click', '.remove-item-btn', function() {
             const idToRemove = $(this).data('id');
             removeFromSale(idToRemove);
+        });
+
+        // Add event listener for quantity changes
+        $('#sale-items').on('change', '.sale-item-quantity', function() {
+            const id = $(this).data('id');
+            const newQuantity = parseInt($(this).val());
+            const oldQuantity = currentSaleItems[id].quantity;
+            const quantityDifference = newQuantity - oldQuantity;
+
+            if (isNaN(newQuantity) || newQuantity < 0) {
+                showMessage('Quantity must be a non-negative number.', 'error');
+                $(this).val(oldQuantity); // Revert to old quantity
+                return;
+            }
+
+            if (quantityDifference === 0) {
+                return; // No change
+            }
+
+            // If new quantity is 0, remove the item
+            if (newQuantity === 0) {
+                removeFromSale(id);
+                return;
+            }
+
+            // Update local sale items
+            currentSaleItems[id].quantity = newQuantity;
+
+            // Send to backend (add_to_sale handles positive/negative quantity for update)
+            $.ajax({
+                url: `${API_BASE_URL}/add_to_sale`,
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ id: id, quantity: quantityDifference }),
+                success: function(response) {
+                    showMessage(response.message || `Updated ${currentSaleItems[id].name} quantity.`);
+                    updateCurrentSaleDisplay();
+                    loadInventory(); // Refresh inventory to reflect stock changes
+                },
+                error: function(xhr) {
+                    // If backend fails, revert local change
+                    currentSaleItems[id].quantity = oldQuantity;
+                    showMessage('Error updating sale quantity: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'), 'error');
+                    updateCurrentSaleDisplay(); // Revert display
+                }
+            });
         });
 
         if (Object.keys(currentSaleItems).length === 0) {
